@@ -1,0 +1,18 @@
+body { 
+  background-color: rgb(248, 210, 218); 
+  font-family: Arial, sans-serif; 
+} 
+ 
+h1 { 
+  color: rgb(137, 78, 114); 
+} 
+
+a:link, a:visited {
+  background-color: white;
+  color: black;
+}
+
+a:hover, a:active {
+  background-color: rgb(205, 111, 210);
+  color: white;
+}
