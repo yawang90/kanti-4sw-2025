@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wettplattform – Karten & Matchups (Demo)</title>
+  <style>
+    :root{
+      --bg:#0f1220;          /* dunkles Blau-Violett */
+      --panel:#171a2b;       /* Panel */
+      --panel-2:#1e2236;     /* Panel Hover */
+      --text:#e7eaf6;        /* Primärtext */
+      --muted:#aab0cf;       /* Sekundärtext */
+      --accent:#7c5cff;      /* Akzent */
+      --win:#2ecc71;         /* Gewinn */
+      --loss:#ff6b6b;        /* Verlust */
+      --warning:#ffb020;     /* Warnung */
+      --chip:#22263d;        /* Chip-Hintergrund */
+      --border: #2b3152;     /* zarte Umrandung */
+
+      /* Rarity-Farben */
+      --rar-common:#9aa4b2;
+      --rar-rare:#3ab0ff;
+      --rar-epic:#c084fc;
+      --rar-legendary: linear-gradient(90deg,#ffcf33,#ff8a00,#ff33a8);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background: radial-gradient(1200px 1200px at 80% -10%, rgba(124,92,255,.25), transparent 60%),
+                           radial-gradient(900px 900px at 0% 100%, rgba(58,176,255,.15), transparent 55%),
+                           var(--bg);
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+    header{
+      position:sticky; top:0; z-index:20;
+      background:rgba(15,18,32,.8); backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+    }
+    .wrap{max-width:1200px; margin:0 auto; padding:16px}
+    .brand{display:flex; align-items:center; gap:12px}
+    .logo{
+      width:36px; height:36px; border-radius:50%;
+      background:conic-gradient(from 140deg at 50% 50%, #7c5cff, #3ab0ff, #c084fc, #7c5cff);
+      box-shadow:0 0 20px rgba(124,92,255,.6);
+    }
+    h1{font-size:20px; margin:0}
+    .balance{
+      margin-left:auto; display:flex; align-items:center; gap:10px; background:var(--chip);
+      border:1px solid var(--border); padding:8px 12px; border-radius:999px;
+    }
+    .balance b{font-size:15px}
+
+    nav{margin-top:12px; display:flex; gap:8px; flex-wrap:wrap}
+    .tab-btn{
+      background:var(--panel); border:1px solid var(--border); color:var(--text);
+      padding:10px 14px; border-radius:12px; cursor:pointer; transition:.15s;
+    }
+    .tab-btn:hover{background:var(--panel-2)}
+    .tab-btn.active{outline:2px solid var(--accent)}
+
+    main{padding:20px 0}
+
+    /* Layout */
+    .grid{
+      display:grid; gap:14px;
+      grid-template-columns: repeat(12, 1fr);
+    }
+    .col-12{grid-column:span 12}
+    .col-8{grid-column:span 8}
+    .col-6{grid-column:span 6}
+    .col-4{grid-column:span 4}
+    .col-3{grid-column:span 3}
+    @media (max-width: 980px){
+      .col-8,.col-6{grid-column:span 12}
+      .col-4,.col-3{grid-column:span 6}
+    }
+    @media (max-width: 640px){
+      .col-4,.col-3{grid-column:span 12}
+    }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.00));
+      border: 1px solid var(--border);
+      border-radius: 16px; padding:16px; position:relative;
+    }
+    .card:hover{border-color:#3a4270}
+    .card h3{margin:0 0 6px 0}
+    .muted{color:var(--muted)}
+    .row{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+    .row-between{display:flex; align-items:center; justify-content:space-between; gap:10px}
+
+    input, select{
+      background:var(--panel); color:var(--text);
+      border:1px solid var(--border); border-radius:10px; padding:10px 12px; font-size:14px;
+    }
+    button{
+      background:linear-gradient(180deg, #8469ff, #6e55ff);
+      color:white; border:none; border-radius:12px; padding:10px 14px; font-weight:600; cursor:pointer;
+      box-shadow:0 6px 16px rgba(124,92,255,.35);
+    }
+    button:hover{filter:brightness(1.05)}
+    button.secondary{background:var(--chip); color:var(--text); box-shadow:none; border:1px solid var(--border)}
+    button.ghost{background:transparent; border:1px dashed var(--border)}
+    button.danger{background:linear-gradient(180deg, #ff6b6b, #e74c3c)}
+
+    .pill{display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background:var(--chip); border:1px solid var(--border)}
+    .pill small{font-size:12px; color:var(--muted)}
+
+    .odds{font-weight:700; letter-spacing:.3px}
+    .payout{font-weight:700}
+
+    .match{
+      display:grid; grid-template-columns: 1fr auto 1fr; gap:8px; align-items:center;
+    }
+    .vs{font-weight:700; opacity:.8; text-align:center}
+
+    .avatar{
+      width:42px; height:42px; border-radius:12px; display:grid; place-items:center; font-weight:800;
+      background: linear-gradient(180deg, rgba(124,92,255,.25), rgba(58,176,255,.25));
+      border:1px solid var(--border);
+    }
+    .chip{background:var(--chip); border:1px solid var(--border); padding:6px 10px; border-radius:10px; font-size:12px}
+
+    .rarity{
+      display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px;
+      border:1px solid var(--border); font-size:12px; font-weight:700;
+    }
+    .rar-common{color:var(--rar-common)}
+    .rar-rare{color:var(--rar-rare)}
+    .rar-epic{color:var(--rar-epic)}
+    .rar-legendary{background:var(--chip);
+      background-clip: padding-box; color:#111; position:relative; overflow:hidden}
+    .rar-legendary:before{
+      content:"Legendary"; position:absolute; inset:0; -webkit-background-clip:text; background-clip:text;
+      background: var(--rar-legendary); color:transparent; font-weight:900; letter-spacing:.5px;
+      display:flex; align-items:center; justify-content:center; opacity:.9
+    }
+
+    .card-grid{display:grid; gap:12px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr))}
+    .collect-card{
+      padding:14px; border-radius:16px; border:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.00));
+    }
+    .collect-card .top{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px}
+    .collect-card .avatar{width:56px; height:56px; border-radius:14px}
+    .collect-card .name{font-weight:800}
+    .legendary-ring{
+      border:2px solid transparent; border-radius:16px; padding:2px; background: var(--rar-legendary);
+    }
+
+    .reveal{
+      display:grid; gap:10px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    }
+
+    .hr{height:1px; background:var(--border); margin:14px 0}
+    .small{font-size:12px; color:var(--muted)}
+
+    .tag{font-size:11px; padding:4px 8px; border-radius:999px; background:var(--chip); border:1px solid var(--border)}
+
+    .toast{position:fixed; right:16px; bottom:16px; background:#111827; color:white; padding:10px 14px; border-radius:12px; border:1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,.35); opacity:0; transform: translateY(10px); transition:.25s}
+    .toast.show{opacity:1; transform: translateY(0)}
+
+    .warning{color:var(--warning)}
+    .success{color:var(--win)}
+    .danger-txt{color:var(--loss)}
+
+    a.inline{color:var(--accent); text-decoration:none}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap row">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <h1>Wettplattform – Karten & Matchups (Demo)</h1>
+      </div>
+      <div class="balance">
+        <span class="muted">Guthaben:</span>
+        <b id="balance">—</b>
+        <button class="secondary" id="addFundsBtn" title="Demo-Geld hinzufügen">+500</button>
+      </div>
+    </div>
+    <div class="wrap">
+      <nav id="tabs"></nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="view"></section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    /* =====================================================
+       🧠 Datenmodell & Konfiguration
+       ===================================================== */
+
+    const RARITY = {
+      Common:    { key:'Common',    weight: 60, boost: 0.02, colorClass:'rar-common',     sell: 20,  supplyPerPerson: 500 },
+      Rare:      { key:'Rare',      weight: 25, boost: 0.05, colorClass:'rar-rare',       sell: 60,  supplyPerPerson: 250 },
+      Epic:      { key:'Epic',      weight: 12, boost: 0.10, colorClass:'rar-epic',       sell: 160, supplyPerPerson: 120 },
+      Legendary: { key:'Legendary', weight:  3, boost: 0.15, colorClass:'rar-legendary',  sell: 400, supplyPerPerson: 50  },
+    };
+
+    // Personen (fiktiv) – jede Person hat genau eine Rarität (somit eine "Limitation")
+    const PEOPLE = [
+      { id:'storm',  name:'Alex Storm',     rarity:'Common'    },
+      { id:'vega',   name:'Blaze Vega',     rarity:'Rare'      },
+      { id:'nova',   name:'Cira Nova',      rarity:'Epic'      },
+      { id:'onyx',   name:'Dax Onyx',       rarity:'Common'    },
+      { id:'ember',  name:'Ember Hale',     rarity:'Legendary' },
+      { id:'frost',  name:'Finn Frost',     rarity:'Rare'      },
+      { id:'gale',   name:'Gale Rivers',    rarity:'Common'    },
+      { id:'haze',   name:'Haze Quinn',     rarity:'Epic'      },
+      { id:'irix',   name:'Iris Irix',      rarity:'Rare'      },
+      { id:'juno',   name:'Juno Ardent',    rarity:'Common'    },
+      { id:'kyro',   name:'Kyro Vale',      rarity:'Epic'      },
+      { id:'lyra',   name:'Lyra Dawn',      rarity:'Legendary' },
+      { id:'mako',   name:'Mako Flint',     rarity:'Common'    },
+      { id:'nix',    name:'Nix Calder',     rarity:'Rare'      },
+      { id:'ony',    name:'Onya Pierce',    rarity:'Epic'      },
+      { id:'pyra',   name:'Pyra Locke',     rarity:'Legendary' },
+    ];
+
+    const PACK_PRICE = 100;        // Preis pro Booster (3 Karten)
+    const START_BALANCE = 1000;    // Startgeld
+    const SCOUT_COOLDOWN_MS = 24*60*60*1000; // 24h
+
+    const TABS = [
+      { key:'bets', label:'Wetten' },
+      { key:'portfolio', label:'Portfolio' },
+      { key:'shop', label:'Shop' },
+      { key:'history', label:'Historie' },
+      { key:'info', label:'Regeln & Info' },
+    ];
+
+    function rid(prefix='id'){ return prefix + '_' + Math.random().toString(36).slice(2,9) }
+    function round2(n){ return Math.round((n + Number.EPSILON)*100)/100 }
+
+    // Hilfsfunktionen
+    function rarityDef(r){ return RARITY[r] }
+    function personById(id){ return PEOPLE.find(p=>p.id===id) }
+
+    function weightedPick(items, getWeight){
+      const total = items.reduce((s,x)=>s+getWeight(x),0)
+      let r = Math.random()*total
+      for(const it of items){
+        r -= getWeight(it)
+        if(r <= 0) return it
+      }
+      return items[items.length-1]
+    }
+
+    function pickRarityByPackOdds(){
+      // Konvertiere RARITY in Liste und picke nach weight
+      const entries = Object.values(RARITY)
+      return weightedPick(entries, e=>e.weight).key
+    }
+
+    function pickPersonOfRarity(rarity){
+      const candidates = PEOPLE.filter(p=>p.rarity===rarity)
+      return candidates[Math.floor(Math.random()*candidates.length)]
+    }
+
+    function now(){ return Date.now() }
+
+    /* =====================================================
+       💾 Persistenter State (localStorage)
+       ===================================================== */
+    const LS_KEY = 'betcards_demo_state_v1';
+
+    const DefaultState = () => ({
+      balance: START_BALANCE,
+      portfolio: [],           // [{personId, rarity, serial}]
+      minted: {},              // { personId: nextSerial }
+      lastScout: 0,            // timestamp
+      matches: [],             // [{id, a, b, oddsA, oddsB, status:'open'|'closed', winner?}]
+      bets: [],                // [{id, matchId, pick, stake, odds, boost, potential, status:'open'|'win'|'lose', settledAt?}]
+      history: [],             // settled bets copied here
+    })
+
+    let state = loadState()
+    function loadState(){
+      try{
+        const raw = localStorage.getItem(LS_KEY)
+        if(!raw) return DefaultState()
+        const s = JSON.parse(raw)
+        // Backfill Felder
+        s.minted ||= {}
+        s.history ||= []
+        s.matches ||= []
+        s.bets ||= []
+        s.portfolio ||= []
+        s.balance = typeof s.balance === 'number' ? s.balance : START_BALANCE
+        return s
+      }catch(e){ return DefaultState() }
+    }
+    function save(){ localStorage.setItem(LS_KEY, JSON.stringify(state)) }
+
+    /* =====================================================
+       🧮 Wettlogik
+       ===================================================== */
+    function generateMatches(count=8){
+      const pairs = []
+      const shuffled = [...PEOPLE].sort(()=>Math.random()-0.5)
+      for(let i=0; i<count; i++){
+        const a = shuffled[(i*2) % PEOPLE.length]
+        const b = shuffled[(i*2+1) % PEOPLE.length]
+        if(!a || !b || a.id===b.id) continue
+        // Zufällige Quoten: 1.3 – 3.5 (realistisch)
+        const baseA = 1.3 + Math.random()*2.2
+        const baseB = 1.3 + Math.random()*2.2
+        // leichte Balance (nicht beide extrem hoch)
+        const norm = (1/baseA + 1/baseB)
+        const k = 0.92 / norm  // ~8% Overround Markt
+        const oddsA = round2(baseA*k)
+        const oddsB = round2(baseB*k)
+        pairs.push({ id: rid('match'), a:a.id, b:b.id, oddsA, oddsB, status:'open' })
+      }
+      state.matches = pairs
+      save()
+    }
+
+    function impliedProb(odds){ return 1/odds }
+
+    function simulateResult(match){
+      if(match.status !== 'open') return match
+      const pA = impliedProb(match.oddsA)
+      const pB = impliedProb(match.oddsB)
+      const total = pA + pB
+      const r = Math.random()*total
+      const winner = r < pA ? match.a : match.b
+      match.status = 'closed'
+      match.winner = winner
+      // Bets abrechnen
+      for(const bet of state.bets.filter(b=>b.matchId===match.id && b.status==='open')){
+        if(bet.pick === winner){
+          bet.status = 'win'
+          const payout = round2(bet.stake * bet.odds * (1 + bet.boost))
+          state.balance = round2(state.balance + payout)
+          bet.payout = payout
+        }else{
+          bet.status = 'lose'
+          bet.payout = 0
+        }
+        bet.settledAt = now()
+        state.history.unshift(bet)
+      }
+      // offene Bets dieses Spiels als historisiert markieren
+      state.bets = state.bets.filter(b=>!(b.matchId===match.id && (b.status==='win' || b.status==='lose')))
+      save()
+      return match
+    }
+
+    function placeBet(matchId, pickId, stake){
+      const match = state.matches.find(m=>m.id===matchId)
+      if(!match || match.status!=='open') return toast('Match ist nicht verfügbar', true)
+      const odds = (pickId===match.a) ? match.oddsA : match.oddsB
+      if(!(stake>0)) return toast('Einsatz muss > 0 sein', true)
+      if(stake>state.balance) return toast('Nicht genügend Guthaben', true)
+
+      const ownsCard = state.portfolio.some(c=>c.personId===pickId)
+      let boost = 0
+      if(ownsCard){
+        // bester Boost der Person anwenden (höchste Rarität im Besitz)
+        const best = bestRarityOwned(pickId)
+        boost = rarityDef(best).boost
+      }
+
+      const potential = round2(stake * odds * (1+boost))
+      state.balance = round2(state.balance - stake)
+      const bet = { id:rid('bet'), matchId, pick:pickId, stake, odds, boost, potential, status:'open', placedAt: now() }
+      state.bets.unshift(bet)
+      save();
+      toast(`Wette platziert: ${stake} auf ${personById(pickId).name} @ ${odds}x ${(boost>0?`(+${Math.round(boost*100)}% Bonus)`:``)}`)
+      render()
+    }
+
+    function bestRarityOwned(personId){
+      const order = ['Common','Rare','Epic','Legendary']
+      let best = null
+      for(const r of order){
+        if(state.portfolio.some(c=>c.personId===personId && c.rarity===r)) best = r
+      }
+      return best || 'Common'
+    }
+
+    /* =====================================================
+       🧩 Sammelkarten & Packs
+       ===================================================== */
+    function nextSerial(personId){
+      const current = state.minted[personId] || 0
+      return current + 1
+    }
+    function incSerial(personId){
+      state.minted[personId] = nextSerial(personId)
+    }
+
+    function canMint(person){
+      const def = rarityDef(person.rarity)
+      const current = state.minted[person.id] || 0
+      return current < def.supplyPerPerson
+    }
+
+    function mintCardOfRarity(rarity){
+      // Pick einen verfügbaren Charakter dieser Rarität
+      const candidates = PEOPLE.filter(p=>p.rarity===rarity && canMint(p))
+      if(candidates.length===0) return null
+      const person = candidates[Math.floor(Math.random()*candidates.length)]
+      const serial = nextSerial(person.id)
+      state.portfolio.push({ personId: person.id, rarity: person.rarity, serial })
+      incSerial(person.id)
+      return { person, serial }
+    }
+
+    function openPack(){
+      if(state.balance < PACK_PRICE) return toast('Nicht genug Guthaben für ein Pack', true)
+      state.balance = round2(state.balance - PACK_PRICE)
+      const pulled = []
+      for(let i=0;i<3;i++){
+        // stelle sicher, dass wir was minten können – falls die gezogene Rarität leer ist, versuche andere
+        let tries = 0, card = null
+        while(tries<10 && !card){
+          const rar = pickRarityByPackOdds()
+          card = mintCardOfRarity(rar)
+          tries++
+        }
+        if(!card){
+          // Fallback: irgendeine mintbare Karte
+          const any = PEOPLE.find(p=>canMint(p))
+          if(any){
+            const serial = nextSerial(any.id)
+            state.portfolio.push({ personId:any.id, rarity:any.rarity, serial })
+            incSerial(any.id)
+            card = { person:any, serial }
+          }
+        }
+        if(card) pulled.push(card)
+      }
+      save()
+      renderShopReveal(pulled)
+      updateBalance()
+      toast('Pack geöffnet!')
+    }
+
+    function scoutFree(){
+      const last = state.lastScout || 0
+      const remaining = SCOUT_COOLDOWN_MS - (now() - last)
+      if(remaining>0){
+        const hrs = Math.ceil(remaining/3600000)
+        return toast(`Zu früh! In ca. ${hrs}h wieder möglich.`, true)
+      }
+      // Scout zieht bevorzugt Common/Rare
+      const rar = Math.random() < 0.8 ? 'Common' : 'Rare'
+      const card = mintCardOfRarity(rar)
+      state.lastScout = now()
+      save();
+      renderShopReveal(card? [card] : [])
+      toast('Du hast eine Karte gefunden!')
+    }
+
+    function sellCard(idx){
+      const card = state.portfolio[idx]
+      if(!card) return
+      const price = rarityDef(card.rarity).sell
+      state.portfolio.splice(idx,1)
+      state.balance = round2(state.balance + price)
+      save();
+      toast(`Karte verkauft (+${price})`)
+      render()
+    }
+
+    /* =====================================================
+       🖼️ Rendering
+       ===================================================== */
+    const view = document.getElementById('view')
+    const tabsEl = document.getElementById('tabs')
+
+    function renderTabs(){
+      tabsEl.innerHTML = ''
+      for(const t of TABS){
+        const btn = document.createElement('button')
+        btn.className = 'tab-btn' + (currentTab===t.key?' active':'')
+        btn.textContent = t.label
+        btn.onclick = ()=>{ currentTab = t.key; render() }
+        tabsEl.appendChild(btn)
+      }
+    }
+
+    function owns(personId){ return state.portfolio.some(c=>c.personId===personId) }
+
+    function renderBets(){
+      if(state.matches.length===0) generateMatches(8)
+      const wrap = document.createElement('div')
+      wrap.className = 'grid'
+
+      const header = document.createElement('div')
+      header.className = 'col-12 card row-between'
+      header.innerHTML = `
+        <div class="row" style="gap:12px">
+          <span class="pill"><small>Hinweis</small> Wenn du die Karte einer Person besitzt, erhältst du einen Bonus auf die Auszahlung (+2% / +5% / +10% / +15% je nach Seltenheit).</span>
+        </div>
+        <div class="row" style="gap:8px">
+          <button class="secondary" id="refreshMatches">Neue Matchups</button>
+        </div>`
+      wrap.appendChild(header)
+
+      document.getElementById('view').innerHTML = ''
+      document.getElementById('view').appendChild(wrap)
+
+      document.getElementById('refreshMatches').onclick = ()=>{ generateMatches(8); render() }
+
+      for(const m of state.matches){
+        const a = personById(m.a), b = personById(m.b)
+        const card = document.createElement('div')
+        card.className = 'col-6 card'
+
+        const ownsA = owns(a.id), ownsB = owns(b.id)
+        const boostA = ownsA ? rarityDef(bestRarityOwned(a.id)).boost : 0
+        const boostB = ownsB ? rarityDef(bestRarityOwned(b.id)).boost : 0
+
+        card.innerHTML = `
+          <div class="row-between">
+            <div class="row">
+              <span class="tag">Match-ID: ${m.id.slice(-4).toUpperCase()}</span>
+              ${m.status==='closed' ? `<span class="tag">Beendet</span>` : ''}
+            </div>
+            ${m.status==='open' ? `<button class="ghost" data-sim="${m.id}">Ergebnis simulieren</button>` : ''}
+          </div>
+          <div class="hr"></div>
+          <div class="match">
+            <div class="row">
+              <div class="avatar">${a.name[0]}</div>
+              <div>
+                <div><b>${a.name}</b></div>
+                <div class="small">${a.rarity} ${ownsA?`· <span class="success">+${Math.round(boostA*100)}% Bonus</span>`:''}</div>
+              </div>
+            </div>
+            <div class="vs">VS</div>
+            <div class="row" style="justify-content:flex-end">
+              <div>
+                <div style="text-align:right"><b>${b.name}</b></div>
+                <div class="small" style="text-align:right">${b.rarity} ${ownsB?`· <span class="success">+${Math.round(boostB*100)}% Bonus</span>`:''}</div>
+              </div>
+              <div class="avatar">${b.name[0]}</div>
+            </div>
+          </div>
+          <div class="hr"></div>
+          <div class="grid" style="grid-template-columns: 1fr 1fr; gap:10px">
+            <div>
+              <div class="muted">Quote</div>
+              <div class="odds">${m.oddsA.toFixed(2)}x</div>
+              <div class="row" style="margin-top:8px; gap:6px">
+                <input type="number" step="0.01" min="0" placeholder="Einsatz" style="width:110px" data-stake-a="${m.id}" />
+                <button data-bet-a="${m.id}">Wette auf ${a.name.split(' ')[0]}</button>
+              </div>
+            </div>
+            <div style="text-align:right">
+              <div class="muted">Quote</div>
+              <div class="odds">${m.oddsB.toFixed(2)}x</div>
+              <div class="row" style="margin-top:8px; gap:6px; justify-content:flex-end">
+                <input type="number" step="0.01" min="0" placeholder="Einsatz" style="width:110px" data-stake-b="${m.id}" />
+                <button data-bet-b="${m.id}">Wette auf ${b.name.split(' ')[0]}</button>
+              </div>
+            </div>
+          </div>
+          ${m.status==='closed' ? `<div class="hr"></div><div class="small">Sieger: <b>${personById(m.winner).name}</b></div>` : ''}
+        `
+        wrap.appendChild(card)
+      }
+
+      // Wiring
+      wrap.addEventListener('click', (e)=>{
+        const sim = e.target.getAttribute('data-sim')
+        const betA = e.target.getAttribute('data-bet-a')
+        const betB = e.target.getAttribute('data-bet-b')
+        if(sim){
+          const m = state.matches.find(m=>m.id===sim)
+          simulateResult(m)
+          render()
+        }
+        if(betA){
+          const stake = parseFloat(document.querySelector(`[data-stake-a="${betA}"]`).value)
+          const m = state.matches.find(x=>x.id===betA)
+          placeBet(m.id, m.a, stake)
+        }
+        if(betB){
+          const stake = parseFloat(document.querySelector(`[data-stake-b="${betB}"]`).value)
+          const m = state.matches.find(x=>x.id===betB)
+          placeBet(m.id, m.b, stake)
+        }
+      })
+    }
+
+    function renderPortfolio(){
+      const wrap = document.createElement('div')
+      wrap.className = 'grid'
+
+      const header = document.createElement('div')
+      header.className = 'col-12 card row-between'
+      header.innerHTML = `
+        <div class="row" style="gap:10px">
+          <span class="pill"><small>Portfolio</small> ${state.portfolio.length} Karten gesamt</span>
+          <span class="pill"><small>Boost-Regel</small> Besitz einer Karte erhöht die Auszahlung beim Tippen auf diese Person (bis +15%).</span>
+        </div>
+        <div class="row" style="gap:8px">
+          <button class="ghost" id="resetDemo">Demo zurücksetzen</button>
+        </div>`
+      wrap.appendChild(header)
+
+      const grid = document.createElement('div')
+      grid.className = 'col-12 card-grid'
+
+      if(state.portfolio.length===0){
+        const empty = document.createElement('div')
+        empty.className = 'col-12 card'
+        empty.innerHTML = `<b>Keine Karten</b><div class="small">Öffne ein Pack im Shop oder nutze die tägliche Suche.</div>`
+        wrap.appendChild(empty)
+      }else{
+        // sort: rarity -> name -> serial
+        const order = {Legendary:3, Epic:2, Rare:1, Common:0}
+        const cards = state.portfolio.map((c,idx)=>({idx, ...c}))
+          .sort((a,b)=> order[b.rarity]-order[a.rarity] || personById(a.personId).name.localeCompare(personById(b.personId).name) || a.serial-b.serial)
+        for(const c of cards){
+          const p = personById(c.personId)
+          const rareClass = rarityDef(c.rarity).colorClass
+          const sell = rarityDef(c.rarity).sell
+          const el = document.createElement('div')
+          el.className = 'collect-card' + (c.rarity==='Legendary'? ' legendary-ring':'' )
+          el.innerHTML = `
+            <div class="top">
+              <div class="row">
+                <div class="avatar" title="${p.name}">${p.name[0]}</div>
+                <div>
+                  <div class="name">${p.name}</div>
+                  <div class="small">Seriennummer #${c.serial} · <span class="rarity ${rareClass}">${c.rarity}</span></div>
+                </div>
+              </div>
+              <div class="row" style="gap:6px">
+                <span class="chip">Verkauf: ${sell}</span>
+                <button class="secondary" data-sell="${c.idx}">Verkaufen</button>
+              </div>
+            </div>
+            <div class="small muted">Limitierung je Person & Rarität: ${rarityDef(c.rarity).supplyPerPerson} Stück</div>
+          `
+          grid.appendChild(el)
+        }
+        wrap.appendChild(grid)
+      }
+
+      document.getElementById('view').innerHTML = ''
+      document.getElementById('view').appendChild(wrap)
+
+      wrap.addEventListener('click', (e)=>{
+        const idx = e.target.getAttribute('data-sell')
+        if(idx!==null){ sellCard(Number(idx)) }
+      })
+
+      document.getElementById('resetDemo').onclick = ()=>{
+        if(confirm('Alles zurücksetzen? Guthaben, Karten, Matches & Historie werden gelöscht.')){
+          state = DefaultState(); save(); generateMatches(8); render(); toast('Zurückgesetzt')
+        }
+      }
+    }
+
+    function renderShop(){
+      const wrap = document.createElement('div')
+      wrap.className = 'grid'
+
+      const shopCard = document.createElement('div')
+      shopCard.className = 'col-8 card'
+      shopCard.innerHTML = `
+        <h3>Shop</h3>
+        <div class="small muted">Öffne Booster mit 3 Karten. Raritätschancen: Common 60% · Rare 25% · Epic 12% · Legendary 3%</div>
+        <div class="hr"></div>
+        <div class="row-between">
+          <div class="row" style="gap:10px">
+            <span class="pill"><small>Preis</small> ${PACK_PRICE}</span>
+          </div>
+          <div class="row" style="gap:8px">
+            <button id="openPack">Pack öffnen</button>
+          </div>
+        </div>
+        <div class="hr"></div>
+        <div id="reveal"></div>
+      `
+      wrap.appendChild(shopCard)
+
+      const scoutCard = document.createElement('div')
+      scoutCard.className = 'col-4 card'
+      const rem = Math.max(0, SCOUT_COOLDOWN_MS - (now() - (state.lastScout||0)))
+      const can = rem<=0
+      const hrs = Math.ceil(rem/3600000)
+      scoutCard.innerHTML = `
+        <h3>Suche</h3>
+        <div class="small muted">Einmal alle 24h eine kostenlose Karte entdecken (Common/Rare).</div>
+        <div class="hr"></div>
+        <button ${can? '' : 'disabled class="secondary"'} id="scoutBtn">${can? 'Jetzt entdecken' : `In ~${hrs}h verfügbar`}</button>
+      `
+      wrap.appendChild(scoutCard)
+
+      document.getElementById('view').innerHTML = ''
+      document.getElementById('view').appendChild(wrap)
+
+      document.getElementById('openPack').onclick = openPack
+      document.getElementById('scoutBtn').onclick = scoutFree
+    }
+
+    function renderShopReveal(pulled){
+      const cont = document.getElementById('reveal')
+      if(!cont) return
+      if(!pulled || pulled.length===0){
+        cont.innerHTML = '<div class="small">Keine Karten gezogen.</div>'
+        return
+      }
+      cont.innerHTML = '<div class="reveal"></div>'
+      const grid = cont.querySelector('.reveal')
+      for(const item of pulled){
+        const {person, serial} = item
+        const rareClass = rarityDef(person.rarity).colorClass
+        const el = document.createElement('div')
+        el.className = 'collect-card' + (person.rarity==='Legendary'? ' legendary-ring':'' )
+        el.innerHTML = `
+          <div class="top">
+            <div class="row">
+              <div class="avatar">${person.name[0]}</div>
+              <div>
+                <div class="name">${person.name}</div>
+                <div class="small">Seriennummer #${serial} · <span class="rarity ${rareClass}">${person.rarity}</span></div>
+              </div>
+            </div>
+            <span class="pill"><small>Neu</small> hinzugefügt</span>
+          </div>
+        `
+        grid.appendChild(el)
+      }
+      render()
+    }
+
+    function renderHistory(){
+      const wrap = document.createElement('div')
+      wrap.className = 'grid'
+
+      const head = document.createElement('div')
+      head.className = 'col-12 card'
+      head.innerHTML = `<h3>Wett-Historie</h3>
+        <div class="small muted">Nur abgeschlossene Wetten werden hier angezeigt.</div>`
+      wrap.appendChild(head)
+
+      if(state.history.length===0){
+        const empty = document.createElement('div')
+        empty.className = 'col-12 card'
+        empty.innerHTML = 'Noch keine abgeschlossenen Wetten.'
+        wrap.appendChild(empty)
+      }else{
+        for(const b of state.history){
+          const m = state.matches.find(x=>x.id===b.matchId) || {}
+          const p = personById(b.pick)
+          const el = document.createElement('div')
+          el.className = 'col-12 card row-between'
+          el.innerHTML = `
+            <div class="row" style="gap:14px">
+              <span class="tag">${new Date(b.placedAt).toLocaleString()}</span>
+              <div><b>${p?.name || 'Unbekannt'}</b> @ ${b.odds}x ${b.boost>0?`<span class="success">(+${Math.round(b.boost*100)}%)</span>`:''}</div>
+              <div class="muted">Einsatz: ${b.stake}</div>
+              <div class="muted">Potenzial: ${b.potential}</div>
+            </div>
+            <div>${b.status==='win'? `<b class="success">Gewinn: ${b.payout}</b>` : `<b class="danger-txt">Verloren</b>`}</div>
+          `
+          wrap.appendChild(el)
+        }
+      }
+
+      document.getElementById('view').innerHTML = ''
+      document.getElementById('view').appendChild(wrap)
+    }
+
+    function renderInfo(){
+      const el = document.createElement('div')
+      el.className = 'card'
+      el.innerHTML = `
+        <h3>Regeln & Hinweise</h3>
+        <ul>
+          <li>Dies ist eine <b>reine Demo</b> – kein echtes Geld, keine echten Personen.</li>
+          <li>Du kannst Booster im <b>Shop</b> öffnen (3 Karten, ${PACK_PRICE} Guthaben) und einmal alle 24h kostenlos eine Karte <b>finden</b>.</li>
+          <li>Jede Person existiert als Sammelkarte mit einer <b>Rarität/Limitation</b> (Common, Rare, Epic, Legendary). Pro Person gibt es je nach Rarität eine begrenzte Auflage.</li>
+          <li>Beim Wetten erhältst du einen <b>Auszahlungsbonus</b>, wenn du eine Karte der getippten Person besitzt: +2% / +5% / +10% / +15%.</li>
+          <li>Match-Ergebnisse werden über die Quoten probabilistisch simuliert.</li>
+          <li>Verkaufe doppelte Karten im <b>Portfolio</b>, um Guthaben zurückzubekommen.</li>
+        </ul>
+        <div class="hr"></div>
+        <div class="small muted">Tipp: Du kannst diese Datei lokal als <b>index.html</b> speichern und direkt im Browser öffnen.</div>
+      `
+      document.getElementById('view').innerHTML = ''
+      document.getElementById('view').appendChild(el)
+    }
+
+    function updateBalance(){
+      document.getElementById('balance').textContent = state.balance.toFixed(2)
+    }
+
+    function toast(msg, error=false){
+      const t = document.getElementById('toast')
+      t.textContent = msg
+      t.classList.add('show')
+      t.style.borderColor = error? '#ff6b6b' : 'var(--border)'
+      setTimeout(()=> t.classList.remove('show'), 2200)
+    }
+
+    function render(){
+      renderTabs(); updateBalance()
+      for(const b of document.querySelectorAll('.tab-btn')){ b.classList.remove('active') }
+      const idx = TABS.findIndex(t=>t.key===currentTab)
+      if(idx>=0) document.querySelectorAll('.tab-btn')[idx].classList.add('active')
+
+      if(currentTab==='bets') renderBets()
+      else if(currentTab==='portfolio') renderPortfolio()
+      else if(currentTab==='shop') renderShop()
+      else if(currentTab==='history') renderHistory()
+      else if(currentTab==='info') renderInfo()
+    }
+
+    // Init
+    let currentTab = 'bets'
+    if(!state.matches || state.matches.length===0) generateMatches(8)
+
+    document.getElementById('addFundsBtn').onclick = ()=>{ state.balance = round2(state.balance + 500); save(); updateBalance(); toast('+500 Demo-Geld') }
+
+    render()
+  </script>
+</body>
+</html>
+
+ 
