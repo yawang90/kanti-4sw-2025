@@ -1,0 +1,13 @@
+body{background-color: brown;
+font-family: "Times New Roman", sans-serif;
+h1 {
+  color:azure;
+
+}
+p {
+  border: 1px solid darkgray;
+  width: 300px;
+  padding: 15px;
+  background-color: white;
+  box-shadow: 20px 10px 3px darkgray;
+}}
